@@ -19,7 +19,6 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       timestamp: new Date().toISOString(),
       services: {
         database: dbStatus,
-        redis: 'connected', // TODO: Add actual Redis check
         groq: 'available', // TODO: Add actual Groq API check
       },
       version: '1.0.0',
@@ -55,7 +54,6 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       timestamp: new Date().toISOString(),
       services: {
         database: 'disconnected',
-        redis: 'disconnected',
         groq: 'unavailable',
       },
       version: '1.0.0',
@@ -88,11 +86,7 @@ router.get('/detailed', async (req: Request, res: Response): Promise<void> => {
       port: mongoose.connection.port,
     };
 
-    // TODO: Add Redis connection check
-    const redisDetails = {
-      status: 'connected', // Placeholder
-      host: process.env.REDIS_URL ? 'configured' : 'not_configured',
-    };
+    // Redis not used in simplified setup
 
     // TODO: Add Groq API check
     const groqDetails = {
@@ -123,7 +117,6 @@ router.get('/detailed', async (req: Request, res: Response): Promise<void> => {
       uptime: `${Math.floor(process.uptime())}s`,
       services: {
         database: dbDetails,
-        redis: redisDetails,
         groq: groqDetails,
       },
       system: systemInfo,

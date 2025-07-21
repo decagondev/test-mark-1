@@ -50,13 +50,6 @@ const userStatsSchema = new Schema({
 }, { _id: false });
 
 const userSchema = new Schema<IUser>({
-  firebaseUid: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    index: true
-  },
   email: {
     type: String,
     required: true,
@@ -70,6 +63,12 @@ const userSchema = new Schema<IUser>({
       message: 'Must be a valid email address'
     },
     index: true
+  },
+  password: {
+    type: String,
+    required: true,
+    minlength: 6,
+    select: false // Don't include password in queries by default
   },
   role: {
     type: String,
@@ -87,6 +86,22 @@ const userSchema = new Schema<IUser>({
   stats: {
     type: userStatsSchema,
     default: () => ({})
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    select: false
+  },
+  passwordResetToken: {
+    type: String,
+    select: false
+  },
+  passwordResetExpires: {
+    type: Date,
+    select: false
   }
 }, {
   timestamps: true,
@@ -95,17 +110,21 @@ const userSchema = new Schema<IUser>({
       ret.id = ret._id;
       delete ret._id;
       delete ret.__v;
-      // Never return sensitive information
+      delete ret.password; // Never return password
+      delete ret.emailVerificationToken;
+      delete ret.passwordResetToken;
+      delete ret.passwordResetExpires;
       return ret;
     }
   }
 });
 
 // Indexes for performance
-userSchema.index({ firebaseUid: 1 });
 userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ 'stats.lastActive': -1 });
+userSchema.index({ emailVerificationToken: 1 });
+userSchema.index({ passwordResetToken: 1 });
 
 // Pre-save middleware
 userSchema.pre('save', function(next) {
@@ -131,7 +150,7 @@ userSchema.methods.updateStats = async function() {
   const Submission = mongoose.model('Submission');
   
   const submissionStats = await Submission.aggregate([
-    { $match: { userId: this.firebaseUid } },
+    { $match: { userId: this._id.toString() } },
     {
       $group: {
         _id: null,
@@ -167,12 +186,12 @@ userSchema.methods.getDisplayName = function(): string {
 };
 
 // Static methods
-userSchema.statics.findByFirebaseUid = function(firebaseUid: string) {
-  return this.findOne({ firebaseUid });
-};
-
 userSchema.statics.findByEmail = function(email: string) {
   return this.findOne({ email: email.toLowerCase() });
+};
+
+userSchema.statics.findByEmailWithPassword = function(email: string) {
+  return this.findOne({ email: email.toLowerCase() }).select('+password');
 };
 
 userSchema.statics.findInstructors = function() {
@@ -231,36 +250,48 @@ userSchema.statics.getUserStats = async function() {
   return result;
 };
 
-// Create or update user from Firebase token
-userSchema.statics.createOrUpdateFromFirebase = async function(firebaseUser: {
-  uid: string;
+// Create user with email and password
+userSchema.statics.createUser = async function(userData: {
   email: string;
+  password: string;
   name?: string;
+  role?: UserRole;
 }) {
-  let user = await this.findOne({ firebaseUid: firebaseUser.uid });
+  const bcrypt = require('bcrypt');
+  const crypto = require('crypto');
   
-  if (!user) {
-    // Create new user
-    user = new this({
-      firebaseUid: firebaseUser.uid,
-      email: firebaseUser.email,
-      profile: {
-        name: firebaseUser.name || firebaseUser.email.split('@')[0],
-        institution: '',
-        course: ''
-      }
-    });
-  } else {
-    // Update existing user
-    user.email = firebaseUser.email;
-    if (firebaseUser.name && firebaseUser.name !== user.profile.name) {
-      user.profile.name = firebaseUser.name;
-    }
-    user.stats.lastActive = new Date();
-  }
+  // Hash password
+  const hashedPassword = await bcrypt.hash(userData.password, 12);
+  
+  // Generate email verification token
+  const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+  
+  const user = new this({
+    email: userData.email.toLowerCase(),
+    password: hashedPassword,
+    role: userData.role || 'student',
+    profile: {
+      name: userData.name || userData.email.split('@')[0],
+      institution: '',
+      course: ''
+    },
+    isEmailVerified: false,
+    emailVerificationToken
+  });
   
   await user.save();
   return user;
+};
+
+// Verify password
+userSchema.statics.verifyPassword = async function(email: string, password: string) {
+  const bcrypt = require('bcrypt');
+  const user = await this.findOne({ email: email.toLowerCase() }).select('+password');
+  
+  if (!user) return null;
+  
+  const isValid = await bcrypt.compare(password, user.password);
+  return isValid ? user : null;
 };
 
 export const User = model<IUser>('User', userSchema); 

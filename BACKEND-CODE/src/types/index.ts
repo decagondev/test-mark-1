@@ -90,12 +90,16 @@ export interface UserStats {
 
 export interface IUser {
   _id?: ObjectId;
-  firebaseUid: string;
   email: string;
+  password: string;
   role: UserRole;
   profile: UserProfile;
   preferences: UserPreferences;
   stats: UserStats;
+  isEmailVerified: boolean;
+  emailVerificationToken?: string;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -233,7 +237,6 @@ export interface HealthCheckResponse {
   timestamp: string;
   services: {
     database: 'connected' | 'disconnected';
-    redis: 'connected' | 'disconnected';
     groq: 'available' | 'unavailable';
   };
   version: string;
