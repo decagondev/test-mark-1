@@ -24,6 +24,9 @@ export const InstructorDashboard: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
+  const [deepDiveModalOpen, setDeepDiveModalOpen] = useState(false);
+  const [deepDiveSubmission, setDeepDiveSubmission] = useState<any | null>(null);
+  const [deepDivePrompt, setDeepDivePrompt] = useState('');
 
   useEffect(() => {
     if (user?.role !== 'instructor') return;
@@ -54,6 +57,17 @@ export const InstructorDashboard: React.FC = () => {
   const handleSort = (col: string) => {
     if (sortBy === col) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortBy(col); setSortDir('asc'); }
+  };
+
+  const openDeepDive = (submission: any) => {
+    const prompt = `Please provide a detailed code review and improvement plan for this repository:\nGitHub: ${submission.githubUrl}\nHere is the current grading report:\n${submission.report || ''}\nFocus on code smell, maintainability, and actionable suggestions for the student.`;
+    setDeepDivePrompt(prompt);
+    setDeepDiveSubmission(submission);
+    setDeepDiveModalOpen(true);
+  };
+
+  const handleCopyPrompt = async () => {
+    await navigator.clipboard.writeText(deepDivePrompt);
   };
 
   if (!user || user.role !== 'instructor') {
@@ -114,7 +128,7 @@ export const InstructorDashboard: React.FC = () => {
           <tbody>
             {sortedSubs.map(s => (
               <tr key={(s as any)._id || (s as any).id} className="border-t">
-                <td className="p-2">{s.userId}</td>
+                <td className="p-2">{(s.userEmail || s.userId)}</td>
                 <td className="p-2">{new Date(s.createdAt).toLocaleString()}</td>
                 <td className="p-2">{s.status}</td>
                 <td className="p-2">{s.grade}</td>
@@ -123,6 +137,13 @@ export const InstructorDashboard: React.FC = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                     View
                   </a>
+                  <button
+                    className="bg-purple-700 text-white px-2 py-1 rounded text-xs hover:bg-purple-800"
+                    onClick={() => openDeepDive(s)}
+                    type="button"
+                  >
+                    Request Deep Dive
+                  </button>
                 </td>
                 <td className="p-2">
                   {(s.status === 'complete' || s.status === 'completed') && (
@@ -142,6 +163,50 @@ export const InstructorDashboard: React.FC = () => {
             ))}
           </tbody>
         </table>
+      )}
+      {/* Deep Dive Modal */}
+      {deepDiveModalOpen && deepDiveSubmission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded shadow-lg p-6 w-full max-w-2xl relative">
+            <h2 className="text-lg font-semibold mb-2">Grok Deep Dive Prompt</h2>
+            <div className="mb-2"><b>Repo:</b> <a href={deepDiveSubmission.githubUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">{deepDiveSubmission.githubUrl}</a></div>
+            <div className="mb-2"><b>Report:</b></div>
+            <pre className="bg-gray-100 p-2 rounded max-h-64 overflow-auto text-xs mb-2">{deepDiveSubmission.report || 'No report available.'}</pre>
+            <div className="mb-2">
+              <label className="block font-medium mb-1">Prompt for Grok</label>
+              <textarea
+                className="w-full border rounded px-3 py-2 text-xs"
+                rows={6}
+                value={deepDivePrompt}
+                readOnly
+              />
+            </div>
+            <div className="flex space-x-2 mt-2">
+              <button
+                className="bg-green-700 text-white px-3 py-1 rounded font-semibold hover:bg-green-800 text-sm"
+                onClick={handleCopyPrompt}
+                type="button"
+              >
+                Copy for Grok
+              </button>
+              <a
+                href="https://grok.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-blue-700 text-white px-3 py-1 rounded font-semibold hover:bg-blue-800 text-sm"
+              >
+                Go to Grok Webchat
+              </a>
+              <button
+                className="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm"
+                onClick={() => setDeepDiveModalOpen(false)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

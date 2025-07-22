@@ -13,11 +13,15 @@ export const AdminDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // User modals
-  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [editUserModalOpen, setEditUserModalOpen] = useState(false);
   const [editUser, setEditUser] = useState<any | null>(null);
   const [userForm, setUserForm] = useState({ email: '', password: '', role: 'student', name: '' });
   const [userFormLoading, setUserFormLoading] = useState(false);
   const [userFormError, setUserFormError] = useState<string | null>(null);
+
+  // User details modal (view only)
+  const [userDetailsModalOpen, setUserDetailsModalOpen] = useState(false);
+  const [modalUser, setModalUser] = useState<any | null>(null);
 
   // Submission modals
   const [subModalOpen, setSubModalOpen] = useState(false);
@@ -25,9 +29,6 @@ export const AdminDashboard: React.FC = () => {
   const [subForm, setSubForm] = useState({ status: '', grade: '', error: '' });
   const [subFormLoading, setSubFormLoading] = useState(false);
   const [subFormError, setSubFormError] = useState<string | null>(null);
-
-  // New state for user details modal
-  const [modalUser, setModalUser] = useState<any | null>(null);
 
   useEffect(() => {
     if (user?.role !== 'admin') return;
@@ -46,13 +47,19 @@ export const AdminDashboard: React.FC = () => {
   const openCreateUser = () => {
     setEditUser(null);
     setUserForm({ email: '', password: '', role: 'student', name: '' });
-    setUserModalOpen(true);
+    setEditUserModalOpen(true);
     setUserFormError(null);
   };
   const openEditUser = (u: any) => {
+    console.log('Editing user:', u);
     setEditUser(u);
-    setUserForm({ email: u.email, password: '', role: u.role, name: u.profile?.name || '' });
-    setUserModalOpen(true);
+    setUserForm({
+      email: u.email || '',
+      password: '',
+      role: u.role || 'student',
+      name: (u.profile && u.profile.name) || u.name || ''
+    });
+    setEditUserModalOpen(true);
     setUserFormError(null);
   };
   const handleUserFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -68,7 +75,7 @@ export const AdminDashboard: React.FC = () => {
       } else {
         await apiService.createUser(userForm);
       }
-      setUserModalOpen(false);
+      setEditUserModalOpen(false);
       const users = await apiService.getUsers();
       setUsers(users);
     } catch (err: any) {
@@ -119,10 +126,10 @@ export const AdminDashboard: React.FC = () => {
     try {
       const user = await apiService.request(`/api/users/${userId}`);
       setModalUser(user);
-      setUserModalOpen(true);
+      setUserDetailsModalOpen(true);
     } catch (err) {
       setModalUser({ error: 'Failed to fetch user details' });
-      setUserModalOpen(true);
+      setUserDetailsModalOpen(true);
     }
   };
 
@@ -185,8 +192,8 @@ export const AdminDashboard: React.FC = () => {
               ))}
             </tbody>
           </table>
-          {/* User modal */}
-          {userModalOpen && (
+          {/* User modal (edit/create) */}
+          {editUserModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
               <div className="bg-white rounded shadow-lg p-6 w-full max-w-sm relative">
                 <h2 className="text-lg font-semibold mb-2">{editUser ? 'Edit User' : 'Add User'}</h2>
@@ -244,7 +251,7 @@ export const AdminDashboard: React.FC = () => {
                     <button
                       type="button"
                       className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      onClick={() => setUserModalOpen(false)}
+                      onClick={() => setEditUserModalOpen(false)}
                       disabled={userFormLoading}
                     >
                       Cancel
@@ -376,8 +383,8 @@ export const AdminDashboard: React.FC = () => {
           )}
         </div>
       )}
-      {/* User details modal */}
-      {userModalOpen && (
+      {/* User details modal (view only) */}
+      {userDetailsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded shadow-lg p-6 w-full max-w-sm relative">
             <h2 className="text-lg font-semibold mb-2">User Details</h2>
@@ -398,7 +405,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex justify-end mt-4">
               <button
                 className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
-                onClick={() => setUserModalOpen(false)}
+                onClick={() => setUserDetailsModalOpen(false)}
               >
                 Close
               </button>
