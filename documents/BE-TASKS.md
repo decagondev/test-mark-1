@@ -323,7 +323,7 @@ export class GroqService {
 
     try {
       const response = await this.groq.chat.completions.create({
-        model: 'llama3-70b-8192',
+        model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 2000,
       });

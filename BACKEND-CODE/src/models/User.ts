@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from 'mongoose';
 import { IUser, UserRole } from '../types';
+import bcrypt from 'bcrypt';
 
 const userProfileSchema = new Schema({
   name: {
@@ -49,7 +50,7 @@ const userStatsSchema = new Schema({
   }
 }, { _id: false });
 
-const userSchema = new Schema<IUser>({
+const MarkerUserSchema = new Schema<IUser>({
   email: {
     type: String,
     required: true,
@@ -120,14 +121,20 @@ const userSchema = new Schema<IUser>({
 });
 
 // Indexes for performance
-userSchema.index({ email: 1 });
-userSchema.index({ role: 1 });
-userSchema.index({ 'stats.lastActive': -1 });
-userSchema.index({ emailVerificationToken: 1 });
-userSchema.index({ passwordResetToken: 1 });
+MarkerUserSchema.index({ email: 1 });
+MarkerUserSchema.index({ role: 1 });
+MarkerUserSchema.index({ 'stats.lastActive': -1 });
+MarkerUserSchema.index({ emailVerificationToken: 1 });
+MarkerUserSchema.index({ passwordResetToken: 1 });
 
 // Pre-save middleware
-userSchema.pre('save', function(next) {
+MarkerUserSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+MarkerUserSchema.pre('save', function(next) {
   // Update last active timestamp
   if (this.isModified() && !this.isModified('stats.lastActive')) {
     this.stats.lastActive = new Date();
@@ -146,7 +153,7 @@ userSchema.pre('save', function(next) {
 });
 
 // Instance methods
-userSchema.methods.updateStats = async function() {
+MarkerUserSchema.methods.updateStats = async function() {
   const Submission = mongoose.model('Submission');
   
   const submissionStats = await Submission.aggregate([
@@ -169,40 +176,40 @@ userSchema.methods.updateStats = async function() {
   await this.save();
 };
 
-userSchema.methods.isInstructor = function(): boolean {
+MarkerUserSchema.methods.isInstructor = function(): boolean {
   return this.role === 'instructor' || this.role === 'admin';
 };
 
-userSchema.methods.isAdmin = function(): boolean {
+MarkerUserSchema.methods.isAdmin = function(): boolean {
   return this.role === 'admin';
 };
 
-userSchema.methods.canGradeSubmissions = function(): boolean {
+MarkerUserSchema.methods.canGradeSubmissions = function(): boolean {
   return this.role === 'instructor' || this.role === 'admin';
 };
 
-userSchema.methods.getDisplayName = function(): string {
+MarkerUserSchema.methods.getDisplayName = function(): string {
   return this.profile.name || this.email.split('@')[0];
 };
 
 // Static methods
-userSchema.statics.findByEmail = function(email: string) {
+MarkerUserSchema.statics.findByEmail = function(email: string) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
-userSchema.statics.findByEmailWithPassword = function(email: string) {
+MarkerUserSchema.statics.findByEmailWithPassword = function(email: string) {
   return this.findOne({ email: email.toLowerCase() }).select('+password');
 };
 
-userSchema.statics.findInstructors = function() {
+MarkerUserSchema.statics.findInstructors = function() {
   return this.find({ role: { $in: ['instructor', 'admin'] } });
 };
 
-userSchema.statics.findStudents = function() {
+MarkerUserSchema.statics.findStudents = function() {
   return this.find({ role: 'student' });
 };
 
-userSchema.statics.getActiveUsers = function(days: number = 30) {
+MarkerUserSchema.statics.getActiveUsers = function(days: number = 30) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
   
@@ -211,7 +218,7 @@ userSchema.statics.getActiveUsers = function(days: number = 30) {
   }).sort({ 'stats.lastActive': -1 });
 };
 
-userSchema.statics.getUserStats = async function() {
+MarkerUserSchema.statics.getUserStats = async function() {
   const stats = await this.aggregate([
     {
       $group: {
@@ -251,13 +258,12 @@ userSchema.statics.getUserStats = async function() {
 };
 
 // Create user with email and password
-userSchema.statics.createUser = async function(userData: {
+MarkerUserSchema.statics.createUser = async function(userData: {
   email: string;
   password: string;
   name?: string;
   role?: UserRole;
 }) {
-  const bcrypt = require('bcrypt');
   const crypto = require('crypto');
   
   // Hash password
@@ -284,8 +290,7 @@ userSchema.statics.createUser = async function(userData: {
 };
 
 // Verify password
-userSchema.statics.verifyPassword = async function(email: string, password: string) {
-  const bcrypt = require('bcrypt');
+MarkerUserSchema.statics.verifyPassword = async function(email: string, password: string) {
   const user = await this.findOne({ email: email.toLowerCase() }).select('+password');
   
   if (!user) return null;
@@ -294,4 +299,4 @@ userSchema.statics.verifyPassword = async function(email: string, password: stri
   return isValid ? user : null;
 };
 
-export const User = model<IUser>('User', userSchema); 
+export const MarkerUser = model<IUser>('MarkerUser', MarkerUserSchema); 

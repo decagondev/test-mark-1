@@ -27,3 +27,6 @@ TEMP_DIR_PREFIX=deca-temp
 # Logging Configuration
 LOG_LEVEL=info
 LOG_FILE=logs/app.log 
+
+# OpenAI API Key (for code quality analysis)
+OPENAI_API_KEY=sk-... 

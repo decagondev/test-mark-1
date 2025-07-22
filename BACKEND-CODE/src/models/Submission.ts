@@ -54,7 +54,7 @@ const testResultSchema = new Schema({
   details: {
     type: String,
     required: true,
-    default: ''
+    default: '-'
   },
   duration: {
     type: Number
@@ -80,7 +80,7 @@ const aiAnalysisSchema = new Schema({
   modelUsed: {
     type: String,
     required: true,
-    default: 'llama3-70b-8192'
+    default: 'mock'
   }
 }, { _id: false });
 
@@ -148,6 +148,12 @@ const submissionSchema = new Schema<ISubmission>({
   report: {
     type: String
   },
+  instructorFeedback: {
+    type: String
+  },
+  instructorReport: {
+    type: String
+  },
   rubric: {
     type: Schema.Types.Mixed
   },
@@ -197,7 +203,7 @@ submissionSchema.pre('save', function(next) {
         promptTokens: 0,
         completionTokens: 0,
         analysisTime: 0,
-        modelUsed: 'llama3-70b-8192'
+        modelUsed: 'meta-llama/llama-4-maverick-17b-128e-instruct'
       }
     };
   }

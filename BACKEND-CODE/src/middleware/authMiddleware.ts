@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
+import { MarkerUser } from '../models/User';
 import { AuthenticatedRequest } from '../types';
 import { authorizationError } from './errorHandler';
 
@@ -48,7 +48,7 @@ export const authMiddleware = async (
     const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
 
     // Get user from database
-    const user = await User.findById(decoded.userId);
+    const user = await MarkerUser.findById(decoded.userId);
     if (!user) {
       throw authorizationError('User not found');
     }
@@ -86,7 +86,7 @@ export const optionalAuthMiddleware = async (
       
       if (jwtSecret) {
         const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
-        const user = await User.findById(decoded.userId);
+        const user = await MarkerUser.findById(decoded.userId);
         
         if (user) {
           req.user = {

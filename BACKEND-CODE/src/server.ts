@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import { healthRouter } from './routes/healthRoutes';
 import { submissionRouter } from './routes/submissionRoutes';
 import { userRouter } from './routes/userRoutes';
+import { authRouter } from './routes/authRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import { SubmissionProgressEvent, SubmissionCompleteEvent, SubmissionErrorEvent } from './types';
@@ -57,10 +58,11 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
+// Allow all origins for local development (DO NOT use in production)
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'],
+  origin: '*',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -154,6 +156,7 @@ export const emitSubmissionError = (event: SubmissionErrorEvent): void => {
 app.use('/health', healthRouter);
 app.use('/api/submissions', submissionRouter);
 app.use('/api/users', userRouter);
+app.use('/api/auth', authRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {

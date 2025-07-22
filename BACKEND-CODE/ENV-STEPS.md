@@ -85,6 +85,19 @@ mongodb+srv://decauser:YOUR_PASSWORD@deca-test-mark.xxxxx.mongodb.net/deca-test-
 
 ---
 
+## 🤖 **Step 2b: OpenAI API Setup (Alternative to Groq, Optional)**
+
+### What you need: `OPENAI_API_KEY`
+
+1. **Create OpenAI Account**
+   - Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+   - Create a new secret key
+   - Add it to your `.env` as `OPENAI_API_KEY=sk-...`
+
+2. **(Optional) Remove or comment out GROQ_API_KEY if not using Groq**
+
+---
+
 ## ⚙️ **Step 3: Environment Variables Setup**
 
 1. **Copy Environment Template**
@@ -232,3 +245,13 @@ If you encounter issues:
 ---
 
 **Status:** ✅ Complete this setup before proceeding to Phase 1 development 
+
+curl -X POST http://localhost:3001/api/submissions/grade -H "Content-Type: application/json" -d '{"githubUrl":"https://github.com/sindresorhus/slugify","projectType":"node","rubric":null}'
+
+curl -X POST http://localhost:3001/api/submissions/grade \
+  -H "Content-Type: application/json" \
+  -d '{"githubUrl":"https://github.com/sindresorhus/slugify","projectType":"express","rubric":null}'
+
+  curl http://localhost:3001/api/submissions/687e65a988d360d38cb885ee
+
+  curl -X POST http://localhost:3001/api/submissions/grade -H "Content-Type: application/json" -d '{"githubUrl":"https://github.com/sindresorhus/slugify","projectType":"express","rubric":null}'

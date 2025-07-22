@@ -62,6 +62,8 @@ export interface ISubmission {
   grade: GradeType;
   scores?: SubmissionScore;
   report?: string;
+  instructorFeedback?: string;
+  instructorReport?: string;
   rubric?: RubricCriteria;
   processingTime?: number;
   error?: string;
