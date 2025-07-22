@@ -87,7 +87,7 @@ const aiAnalysisSchema = new Schema({
 const submissionMetadataSchema = new Schema({
   projectType: {
     type: String,
-    enum: ['express', 'react', 'fullstack'] as ProjectType[],
+    enum: ['express', 'react', 'fullstack', 'c'] as ProjectType[],
     required: true
   },
   dependencies: [{

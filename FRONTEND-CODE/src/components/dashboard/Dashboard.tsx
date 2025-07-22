@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/apiService';
 import { Link } from 'react-router-dom';
@@ -24,6 +24,7 @@ export const Dashboard: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [modalUser, setModalUser] = useState<any | null>(null);
+  let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -40,6 +41,23 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchSubmissions();
+    // Set up polling only once on mount
+    pollingInterval = setInterval(async () => {
+      const data = await apiService.getSubmissions({ userId: user?.id });
+      setSubmissions(data);
+      // If all submissions are completed or failed, stop polling
+      if (data.every((s: any) => s.status === 'completed' || s.status === 'failed')) {
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
+      }
+    }, 30000);
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
     // eslint-disable-next-line
   }, []);
 
@@ -61,6 +79,7 @@ export const Dashboard: React.FC = () => {
       if (user && (user.role === 'instructor' || user.role === 'admin')) {
         payload.rubric = form.rubric;
       }
+      console.log('Submitting payload:', payload);
       await apiService.submitSubmission(payload);
       setSuccess('Submission created!');
       setForm({ githubUrl: '', rubric: '', projectType: 'express', fileGlobs: '' });
@@ -118,6 +137,7 @@ export const Dashboard: React.FC = () => {
               <option value="express">Express</option>
               <option value="react">React</option>
               <option value="fullstack">Fullstack</option>
+              <option value="c">C/C++ Project</option>
             </select>
           </div>
           {/* Only show rubric field for instructors and admins */}
@@ -155,9 +175,17 @@ export const Dashboard: React.FC = () => {
           </button>
         </form>
       </div>
-      <div>
+      <div className="mb-4 flex items-center space-x-2">
         <h2 className="text-xl font-semibold mb-2">Your Submissions</h2>
-        {loading ? (
+        <button
+          className="bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 text-sm"
+          onClick={fetchSubmissions}
+          type="button"
+        >
+          Refresh
+        </button>
+      </div>
+      {loading ? (
           <div>Loading submissions...</div>
         ) : error ? (
           <div className="bg-red-100 text-red-700 p-2 mb-2 rounded">{error}</div>
@@ -169,6 +197,7 @@ export const Dashboard: React.FC = () => {
                 <th className="p-2 text-left">Status</th>
                 <th className="p-2 text-left">Grade</th>
                 <th className="p-2 text-left">Created</th>
+                <th className="p-2 text-left">Score</th>
                 <th className="p-2 text-left">Actions</th>
                 <th className="p-2 text-left">User</th>
               </tr>
@@ -180,6 +209,7 @@ export const Dashboard: React.FC = () => {
                   <td className="p-2">{sub.status}</td>
                   <td className="p-2">{sub.grade}</td>
                   <td className="p-2">{new Date(sub.createdAt).toLocaleString()}</td>
+                  <td className="p-2">{(sub as any).scores && typeof (sub as any).scores.total === 'number' ? (sub as any).scores.total : '-'}</td>
                   <td className="p-2">
                     <div className="flex flex-col space-y-1">
                       <a href={`/results/${(sub as any)._id || (sub as any).id}`} className="text-blue-700 hover:text-blue-900 inline-flex items-center" aria-label="View">
@@ -217,7 +247,6 @@ export const Dashboard: React.FC = () => {
             </tbody>
           </table>
         )}
-      </div>
       {/* User modal */}
       {userModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">

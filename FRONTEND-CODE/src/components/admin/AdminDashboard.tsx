@@ -126,6 +126,11 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const openViewSub = (s: any) => {
+    setEditSub(s);
+    setSubModalOpen(true);
+  };
+
   if (!user || user.role !== 'admin') {
     return <div className="max-w-2xl mx-auto bg-white rounded shadow p-6 mt-8">Admin access required.</div>;
   }
@@ -272,6 +277,7 @@ export const AdminDashboard: React.FC = () => {
                 <th className="p-2 text-left">Created</th>
                 <th className="p-2 text-left">Actions</th>
                 <th className="p-2 text-left">Report</th>
+                <th className="p-2 text-left">Score</th>
               </tr>
             </thead>
             <tbody>
@@ -291,7 +297,7 @@ export const AdminDashboard: React.FC = () => {
                   <td className="p-2">{s.grade}</td>
                   <td className="p-2">{new Date(s.createdAt).toLocaleString()}</td>
                   <td className="p-2 space-x-2">
-                    <a href={`/results/${(s as any)._id || (s as any).id}`} className="text-blue-700 hover:text-blue-900 inline-flex items-center" aria-label="View">
+                    <a href="#" onClick={() => openViewSub(s)} className="text-blue-700 hover:text-blue-900 inline-flex items-center" aria-label="View">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                       View
                     </a>
@@ -318,65 +324,53 @@ export const AdminDashboard: React.FC = () => {
                       </a>
                     )}
                   </td>
+                  <td className="p-2">{(s.scores && typeof s.scores.total === 'number') ? s.scores.total : '-'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           {/* Submission modal */}
-          {subModalOpen && (
+          {subModalOpen && editSub && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-              <div className="bg-white rounded shadow-lg p-6 w-full max-w-sm relative">
-                <h2 className="text-lg font-semibold mb-2">Edit Submission</h2>
-                <form onSubmit={handleSubFormSubmit}>
-                  <div className="mb-2">
-                    <label className="block font-medium mb-1">Status</label>
-                    <input
-                      type="text"
-                      name="status"
-                      value={subForm.status}
-                      onChange={handleSubFormChange}
-                      className="w-full border rounded px-3 py-2"
-                    />
+              <div className="bg-white rounded shadow-lg p-6 w-full max-w-lg relative">
+                <h2 className="text-lg font-semibold mb-2">Submission Details</h2>
+                <div className="mb-2"><b>Repo:</b> <a href={editSub.githubUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">{editSub.githubUrl}</a></div>
+                <div className="mb-2"><b>Status:</b> {editSub.status}</div>
+                <div className="mb-2"><b>Grade:</b> {editSub.grade}</div>
+                <div className="mb-2"><b>Created:</b> {new Date(editSub.createdAt).toLocaleString()}</div>
+                {editSub.scores && editSub.scores.breakdown && editSub.scores.breakdown.length > 0 ? (
+                  <div className="mb-4 flex flex-col space-y-1">
+                    {editSub.scores.breakdown.map((b: any) => (
+                      <div key={b.category} className="text-sm">
+                        <b>{b.category} Score:</b> {b.score} / {b.maxScore}
+                      </div>
+                    ))}
                   </div>
-                  <div className="mb-2">
-                    <label className="block font-medium mb-1">Grade</label>
-                    <input
-                      type="text"
-                      name="grade"
-                      value={subForm.grade}
-                      onChange={handleSubFormChange}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                  </div>
-                  <div className="mb-2">
-                    <label className="block font-medium mb-1">Error</label>
-                    <input
-                      type="text"
-                      name="error"
-                      value={subForm.error}
-                      onChange={handleSubFormChange}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                  </div>
-                  {subFormError && <div className="bg-red-100 text-red-700 p-2 mb-2 rounded">{subFormError}</div>}
-                  <div className="flex justify-end space-x-2 mt-4">
-                    <button
-                      type="button"
-                      className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      onClick={() => setSubModalOpen(false)}
-                      disabled={subFormLoading}
+                ) : (
+                  <div className="mb-4 text-gray-500 text-sm">No score breakdown available.</div>
+                )}
+                <div className="mb-4">
+                  {(editSub.status === 'complete' || editSub.status === 'completed') && (
+                    <a
+                      href={`http://localhost:3001/api/submissions/${editSub._id || editSub.id}/report.md`}
+                      className="text-green-700 hover:text-green-900 inline-flex items-center mr-2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Download Report"
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="bg-blue-700 text-white px-4 py-2 rounded font-semibold hover:bg-blue-800 disabled:opacity-50"
-                      disabled={subFormLoading}
-                    >
-                      {subFormLoading ? 'Saving...' : 'Save'}
-                    </button>
-                  </div>
-                </form>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
+                      Download Report
+                    </a>
+                  )}
+                </div>
+                <div className="flex justify-end mt-4">
+                  <button
+                    className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    onClick={() => setSubModalOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           )}

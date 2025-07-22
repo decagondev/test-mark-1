@@ -10,7 +10,7 @@ const execPromise = util.promisify(exec);
 
 interface GradingResult {
   grade: 'pass' | 'fail';
-  score: {
+  scores: {
     total: number;
     testScore: number;
     qualityScore: number;
@@ -45,19 +45,53 @@ export class GradingService {
       const testResult = await this.runTests(tempDir);
 
       // Analyze code quality (pass npmRegistryData)
-      const qualityResult = await openaiService.analyzeCode(tempDir, testResult, submission.rubric, fileGlobs, npmRegistryData);
+      // Branch for C projects
+      if (submission.metadata?.projectType === 'c') {
+        // Only run code review for C projects (no install/test)
+        // TODO: In future, add CMake/GCC/Valgrind test integration
+        const qualityResult = await openaiService.analyzeCode(tempDir, {}, submission.rubric, fileGlobs, npmRegistryData, 'c');
+        const testScore = 0;
+        // Type guard for C project LLM result
+        type CQualityResult = { codeSmellScore: number; codeQualityScore: number; report: string };
+        const cQualityResult = qualityResult as CQualityResult;
+        // Use scores from the actual LLM response, or extract from report if missing/zero
+        let qualityScore = cQualityResult.codeQualityScore ?? 0;
+        let codeSmellScore = cQualityResult.codeSmellScore ?? 0;
+        if (!qualityScore || !codeSmellScore) {
+          const extracted = extractScoresFromReport(cQualityResult.report || '');
+          if (!qualityScore) qualityScore = extracted.codeQualityScore;
+          if (!codeSmellScore) codeSmellScore = extracted.codeSmellScore;
+        }
+        const totalScore = qualityScore;
+        const breakdown = Array.isArray(qualityResult.breakdown) && qualityResult.breakdown.length > 0
+          ? qualityResult.breakdown
+          : [
+              { category: 'Code Quality', score: qualityScore, maxScore: 100, feedback: 'LLM code quality score' },
+              { category: 'Code Smell', score: codeSmellScore, maxScore: 100, feedback: 'LLM code smell score' }
+            ];
+        // Prepend scores to the report markdown
+        const reportWithScores = `# Grading Report\n\n**Code Quality Score:** ${qualityScore} / 100  \n**Code Smell Score:** ${codeSmellScore} / 100\n\n${qualityResult.report}`;
+        return {
+          grade: totalScore >= 70 ? 'pass' : 'fail',
+          scores: {
+            total: totalScore,
+            testScore,
+            qualityScore,
+            breakdown
+          },
+          report: reportWithScores
+        };
+      }
 
-      // Calculate scores
+      // For non-C projects
       const testScore = this.calculateTestScore(testResult);
-      const qualityScore = qualityResult.score;
+      const qualityResult = await openaiService.analyzeCode(tempDir, {}, submission.rubric, fileGlobs, npmRegistryData, submission.projectType);
+      const qualityScore = qualityResult.score ?? 0;
       const totalScore = (testScore * 0.8) + (qualityScore * 0.2);
-
-      // Generate report
       const report = this.generateReport(testResult, qualityResult);
-
       return {
         grade: totalScore >= 70 ? 'pass' : 'fail',
-        score: { total: totalScore, testScore, qualityScore, breakdown: [] },
+        scores: { total: totalScore, testScore, qualityScore, breakdown: [] },
         report
       };
     } catch (error: any) {
@@ -121,4 +155,18 @@ async function fetchNpmVersions(deps: Record<string, string>): Promise<Record<st
     }
   }));
   return result;
+}
+
+// Helper to extract scores from the markdown report
+function extractScoresFromReport(report: string): { codeQualityScore: number, codeSmellScore: number } {
+  let codeQualityScore = 0;
+  let codeSmellScore = 0;
+  // Try to match "Code Quality Score: XX/100" or "| Code Quality | XX |" in a table
+  const qualityMatch = report.match(/Code Quality Score: (\d{1,3})\/100/i) ||
+                       report.match(/\|\s*Code Quality\s*\|\s*(\d{1,3})\s*\|/i);
+  const smellMatch = report.match(/Code Smell Score: (\d{1,3})\/100/i) ||
+                     report.match(/\|\s*Code Smell\s*\|\s*(\d{1,3})\s*\|/i);
+  if (qualityMatch) codeQualityScore = parseInt(qualityMatch[1], 10);
+  if (smellMatch) codeSmellScore = parseInt(smellMatch[1], 10);
+  return { codeQualityScore, codeSmellScore };
 } 

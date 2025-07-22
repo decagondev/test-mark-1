@@ -15,7 +15,7 @@ export type GradeType = 'pass' | 'fail' | 'pending';
 
 export type UserRole = 'student' | 'instructor' | 'admin';
 
-export type ProjectType = 'express' | 'react' | 'fullstack';
+export type ProjectType = 'express' | 'react' | 'fullstack' | 'c';
 
 // Submission interfaces
 export interface SubmissionScore {

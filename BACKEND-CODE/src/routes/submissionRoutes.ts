@@ -47,6 +47,7 @@ router.post('/grade', getUserFromToken, async (req: Request, res: Response, next
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    console.log('Received projectType from body:', projectType);
     const submission = new Submission({
       githubUrl,
       rubric,
@@ -63,12 +64,20 @@ router.post('/grade', getUserFromToken, async (req: Request, res: Response, next
     });
     await submission.save();
 
+    console.log('[SUBMISSION RECEIVED]', { id: submission._id, projectType: (submission as any).metadata?.projectType });
+
     gradingService.gradeSubmission(submission, fileGlobs)
       .then(async (result) => {
         submission.status = 'completed';
         submission.grade = result.grade;
-        submission.scores = result.score;
+        submission.scores = result.scores;
         submission.report = result.report;
+        console.log('[SUBMISSION GRADED]', {
+          id: submission._id,
+          scores: result.scores,
+          grade: result.grade,
+          report: result.report?.slice(0, 200) // Print first 200 chars only
+        });
         await submission.save();
       })
       .catch(async (error) => {

@@ -11,6 +11,14 @@ interface Submission {
   report?: string;
   metadata?: any;
   error?: string; // Added error field
+  scores?: {
+    total: number;
+    breakdown: {
+      category: string;
+      score: number;
+      maxScore: number;
+    }[];
+  };
 }
 
 export const Results: React.FC = () => {
@@ -66,6 +74,16 @@ export const Results: React.FC = () => {
       <div className="mb-2"><b>Status:</b> {submission.status}</div>
       <div className="mb-2"><b>Grade:</b> {submission.grade}</div>
       <div className="mb-2"><b>Created:</b> {new Date(submission.createdAt).toLocaleString()}</div>
+      {/* Show code quality and code smell scores if present */}
+      {submission.scores && submission.scores.breakdown && (
+        <div className="mb-4 flex flex-col space-y-1">
+          {submission.scores.breakdown.map((b: any) => (
+            <div key={b.category} className="text-sm">
+              <b>{b.category} Score:</b> {b.score} / {b.maxScore}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="mb-4">
         <a
           href={`http://localhost:3001/api/submissions/${(submission as any)._id || (submission as any).id}/report.md`}
